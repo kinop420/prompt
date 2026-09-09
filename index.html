@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>密度プロンプト工房</title>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=IBM+Plex+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --lacquer:#14100f; --ink:#221b19; --paper:#efe3cf; --paper-dim:#b9a88f;
+    --gold:#d4a84b; --gold-deep:#8c6a1f; --vermilion:#c2412d;
+    --serif:"Shippori Mincho",serif; --sans:"IBM Plex Sans JP",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--lacquer);color:var(--paper);font-family:var(--sans);line-height:1.6;
+    background-image:radial-gradient(ellipse at 50% -20%,rgba(212,168,75,.18),transparent 60%)}
+  main{max-width:720px;margin:0 auto;padding:28px 18px 80px}
+  h1{font-family:var(--serif);font-weight:800;font-size:2rem;letter-spacing:.06em;margin:0 0 4px;color:var(--gold)}
+  .lead{margin:0 0 26px;color:var(--paper-dim);font-size:.92rem}
+  .lead b{color:var(--paper);font-weight:500}
+  label{display:block;font-family:var(--serif);font-size:.95rem;margin:0 0 6px;color:var(--gold)}
+  textarea,input,select{width:100%;background:var(--ink);color:var(--paper);border:1px solid #3a2f2b;border-radius:6px;
+    padding:11px 12px;font:inherit;font-size:1rem}
+  textarea:focus,input:focus,select:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold)}
+  textarea{resize:vertical;min-height:72px}
+  .row{display:flex;gap:10px;margin-top:12px}
+  .row>div{flex:1}
+  button{font:inherit;cursor:pointer;border-radius:6px;padding:12px 18px;border:1px solid var(--gold-deep);background:transparent;color:var(--gold)}
+  button.primary{background:var(--vermilion);border-color:var(--vermilion);color:#fff;font-family:var(--serif);font-weight:600;
+    font-size:1.05rem;letter-spacing:.08em;width:100%;margin-top:18px}
+  button:disabled{opacity:.45;cursor:default}
+  button:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+  .slots{margin-top:34px;border-top:1px solid var(--gold-deep);padding-top:10px}
+  .slot{padding:16px 0;border-bottom:1px solid #2f2622;display:grid;grid-template-columns:48px 1fr;gap:12px}
+  .slot .n{font-family:var(--serif);font-size:1.6rem;color:var(--gold-deep);line-height:1.1}
+  .slot .name{font-family:var(--serif);font-size:1rem;color:var(--gold)}
+  .slot .hint{font-size:.8rem;color:var(--paper-dim);margin:2px 0 8px}
+  .slot textarea{min-height:56px;font-size:.93rem}
+  .slot .re{margin-top:6px;padding:6px 12px;font-size:.82rem}
+  .out{margin-top:30px}
+  .out textarea{min-height:150px;font-size:.95rem;border-color:var(--gold-deep);background:#1b1512;color:#fff}
+  .stat{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--paper-dim);margin-top:8px}
+  .tip{margin-top:22px;padding:14px 16px;border-left:3px solid var(--vermilion);background:rgba(194,65,45,.08);font-size:.88rem}
+  .tip p{margin:0 0 6px}
+  .err{color:#f0a08f;margin-top:10px;font-size:.9rem}
+  .busy{color:var(--gold);font-family:var(--serif);letter-spacing:.1em}
+  @media (prefers-reduced-motion:no-preference){.busy{animation:pulse 1.4s infinite}}
+  @keyframes pulse{50%{opacity:.4}}
+</style>
+</head>
+<body>
+<main>
+  <h1>密度プロンプト工房</h1>
+  <p class="lead">題材を入れると、<b>カメラ／三層の中身／素材と光／固有語彙／密度宣言</b>の5枠を埋めて、余白のない画像プロンプトを組み立てます。各枠は書き換え可能。</p>
+
+  <label for="theme">題材（日本語でOK）</label>
+  <textarea id="theme" placeholder="例：深海のクラゲ図鑑 / 90年代秋葉原の電気街 / 王宮の宝石職人の作業台"></textarea>
+
+  <div class="row">
+    <div>
+      <label for="engine">出力先</label>
+      <select id="engine">
+        <option value="mj">Midjourney</option>
+        <option value="sd">Stable Diffusion / Flux</option>
+        <option value="plain">パラメータなし</option>
+      </select>
+    </div>
+    <div>
+      <label for="ar">比率</label>
+      <select id="ar">
+        <option>9:16</option><option>16:9</option><option>1:1</option><option>4:5</option><option>3:2</option>
+      </select>
+    </div>
+    <div>
+      <label for="mood">空気</label>
+      <select id="mood">
+        <option value="">おまかせ</option>
+        <option>華やか・祝祭</option><option>静謐・荘厳</option><option>退廃・不穏</option>
+        <option>ネオン・電飾</option><option>温かい・懐古</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="primary" id="go">5枠を埋める</button>
+  <div id="msg"></div>
+
+  <section class="slots" id="slots"></section>
+
+  <section class="out">
+    <label for="final">完成プロンプト</label>
+    <textarea id="final" readonly></textarea>
+    <div class="stat"><span id="count">0 文字</span><button id="copy">コピー</button></div>
+  </section>
+
+  <div class="tip">
+    <p>迷ったら「画面の左下1cm四方には何が映っているか」を自分に問う。答えられない場所が余白になる。</p>
+    <p>形容詞（beautiful, detailed）は使わない。物体・素材・光源・レンズだけで書く。</p>
+  </div>
+</main>
+
+<script>
+const SLOTS = [
+  {k:"camera", name:"カメラ", hint:"アングル・レンズ・前ボケ。奥行きが層を分離する"},
+  {k:"layers", name:"前景・中景・遠景", hint:"各層に固有名詞の物体を最低1つ。ここが密度の本体"},
+  {k:"light", name:"素材と光", hint:"素材名＋光の反射の仕方。光を物質に当てる書き方"},
+  {k:"vocab", name:"固有語彙", hint:"ジャンル内部の専門用語を3つ以上。「Japanese」ではなく maki-e"},
+  {k:"density", name:"密度宣言", hint:"horror vacui / maximalist / every surface covered など"},
+];
+const state = {};
+const $ = id => document.getElementById(id);
+
+function renderSlots(){
+  $("slots").innerHTML = SLOTS.map((s,i)=>`
+    <div class="slot">
+      <div class="n">${["一","二","三","四","五"][i]}</div>
+      <div>
+        <div class="name">${s.name}</div>
+        <div class="hint">${s.hint}</div>
+        <textarea data-k="${s.k}" aria-label="${s.name}">${state[s.k]||""}</textarea>
+        <button class="re" data-k="${s.k}">この枠だけ作り直す</button>
+      </div>
+    </div>`).join("");
+  $("slots").querySelectorAll("textarea").forEach(t=>t.addEventListener("input",e=>{state[e.target.dataset.k]=e.target.value;assemble();}));
+  $("slots").querySelectorAll("button.re").forEach(b=>b.addEventListener("click",()=>generate(b.dataset.k)));
+}
+
+function assemble(){
+  const parts = SLOTS.map(s=>(state[s.k]||"").trim()).filter(Boolean);
+  let p = parts.join(", ");
+  const eng = $("engine").value, ar = $("ar").value;
+  if (p && eng==="mj") p += ` --ar ${ar} --stylize 400 --chaos 5`;
+  if (p && eng==="sd") p += `, (masterpiece, best quality), aspect ${ar}`;
+  $("final").value = p;
+  $("count").textContent = p.length + " 文字";
+}
+
+async function generate(onlyKey){
+  const theme = $("theme").value.trim();
+  if(!theme){ $("msg").innerHTML='<div class="err">題材を入力してください。</div>'; return; }
+  $("go").disabled = true;
+  $("msg").innerHTML = '<div class="busy">層を積んでいます…</div>';
+  const mood = $("mood").value;
+  const want = onlyKey ? SLOTS.filter(s=>s.k===onlyKey) : SLOTS;
+  const context = onlyKey ? `Other slots already decided (keep consistent with them): ${JSON.stringify(state)}` : "";
+  const sys = `You write image-generation prompts using a fixed 5-slot method for maximum visual density.
+Rules: English only. No adjectives like beautiful/detailed/stunning. Use only objects, materials, light sources, lenses, and genre-specific proper nouns. Comma-separated phrases, no full sentences.
+Slots:
+camera: angle + lens + foreground blur/depth cue (one phrase group).
+layers: three groups prefixed "foreground:", "midground:", "background:", each naming 2-4 concrete objects with material detail.
+light: 2-3 material+light reactions (e.g. "gold leaf catching warm light, wet stone reflecting neon").
+vocab: 3-5 genre-internal technical terms (craft names, architecture terms, period styles).
+density: one density declaration (horror vacui, maximalist, every surface covered, no negative space).
+Return ONLY a JSON object with keys ${want.map(s=>`"${s.k}"`).join(", ")}. No markdown, no preamble.`;
+  const user = `Theme: ${theme}\nMood: ${mood||"your choice, fit the theme"}\n${context}`;
+  try{
+    const r = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,system:sys,messages:[{role:"user",content:user}]})});
+    const d = await r.json();
+    const txt = d.content.filter(c=>c.type==="text").map(c=>c.text).join("").replace(/```json|```/g,"").trim();
+    const j = JSON.parse(txt);
+    want.forEach(s=>{ if(j[s.k]) state[s.k]=j[s.k]; });
+    renderSlots(); assemble();
+    $("msg").innerHTML = "";
+  }catch(e){
+    $("msg").innerHTML = '<div class="err">生成に失敗しました。もう一度試すか、枠を手で埋めてください。</div>';
+  }
+  $("go").disabled = false;
+}
+
+$("go").addEventListener("click",()=>generate());
+["engine","ar"].forEach(id=>$(id).addEventListener("change",assemble));
+$("copy").addEventListener("click",async()=>{
+  if(!$("final").value) return;
+  await navigator.clipboard.writeText($("final").value);
+  $("copy").textContent="コピーしました"; setTimeout(()=>$("copy").textContent="コピー",1500);
+});
+renderSlots(); assemble();
+</script>
+</body>
+</html>
